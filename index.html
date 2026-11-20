@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Kai V2 - Suna</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #0b0f0b; font-family: "Segoe UI", Arial, sans-serif; }
+  /* 1rem = 1 % de la largeur de l'écran (calculé en JS : vw n'existe pas dans le navigateur de GMod) */
+  #fond { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #0b0f0b url("suna.jpg") no-repeat center center;
+          -webkit-background-size: cover; background-size: cover; }
+  #bas { position: fixed; left: 4%; right: 4%; bottom: 5%; }
+  #etat { color: #fff; font-size: 1.3rem; text-align: right; margin-bottom: 0.45rem; text-shadow: 0 1px 4px #000; height: 1.7rem; }
+  #barre { position: relative; height: 1.4rem; border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; background: rgba(0,0,0,0.4); overflow: hidden; }
+  #rempli { position: absolute; top: 3px; bottom: 3px; left: 3px; width: 0; overflow: hidden; -webkit-transition: width 0.4s ease; transition: width 0.4s ease; }
+  .seg { position: absolute; top: 0; bottom: 0; background: #b85900; }
+  #fichier { color: rgba(255,255,255,0.6); font-size: 0.8rem; margin-top: 0.35rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 1.2rem; }
+</style>
+</head>
+<body>
+<div id="fond"></div>
+<div id="bas">
+  <div id="etat">Connexion au serveur...</div>
+  <div id="barre"><div id="rempli"></div></div>
+  <div id="fichier"></div>
+</div>
+<script>
+  var NB = 43, total = 0, restants = 0, etape = 0.05, ratio = 0;
+  var barre = document.getElementById("barre"), rempli = document.getElementById("rempli");
+
+  function mise_en_page() {
+    document.documentElement.style.fontSize = (window.innerWidth / 100) + "px";
+    var largeur = barre.clientWidth - 6, pas = largeur / NB;
+    rempli.innerHTML = "";
+    for (var i = 0; i < NB; i++) {
+      var d = document.createElement("div");
+      d.className = "seg";
+      d.style.left = Math.floor(i * pas) + "px";
+      d.style.width = Math.max(Math.floor(pas) - 3, 1) + "px";
+      d.style.opacity = 0.15 + 0.85 * (i + 1) / NB;
+      rempli.appendChild(d);
+    }
+    maj();
+  }
+
+  function maj() {
+    var p = total > 0 ? Math.max(0, Math.min(1, (total - restants) / total)) : 0;
+    ratio = Math.max(ratio, p, etape);
+    rempli.style.width = Math.round((barre.clientWidth - 6) * ratio) + "px";
+  }
+
+  var TRAD = {
+    "retrieving server info": "Récupération des informations du serveur...",
+    "sending client info": "Envoi des informations du client...",
+    "client info sent!": "Informations envoyées",
+    "mounting addons": "Montage des addons...",
+    "workshop complete": "Workshop terminé",
+    "loading server cache content": "Chargement du contenu du serveur...",
+    "starting lua...": "Démarrage du Lua...",
+    "lua started!": "Lua démarré",
+    "precaching models...": "Préchargement des modèles..."
+  };
+
+  // API de l'écran de chargement de Garry's Mod (fonctions appelées par le jeu)
+  function GameDetails(serverName, serverUrl, mapName, maxPlayers, steamId, gamemode) { maj(); }
+  function SetFilesTotal(n) { total = n; maj(); }
+  function SetFilesNeeded(n) { restants = n; maj(); }
+  function DownloadingFile(f) {
+    if (restants > 0) restants--;
+    document.getElementById("fichier").textContent = "Téléchargement : " + f;
+    maj();
+  }
+  function SetStatusChanged(s) {
+    var brut = String(s), t = TRAD[brut.toLowerCase().replace(/^\s+|\s+$/g, "")];
+    if (!t && /^(\d+) files? needed/i.test(brut)) t = brut.replace(/^(\d+) files? needed.*/i, "$1 fichier(s) à télécharger");
+    if (!t && /^downloading/i.test(brut)) t = "Téléchargement" + brut.replace(/^downloading/i, "");
+    if (!t && /^mounting/i.test(brut)) t = "Montage" + brut.replace(/^mounting/i, "");
+    document.getElementById("etat").textContent = t || brut;
+    if (/lua started|starting lua/i.test(brut)) etape = 0.95;
+    else if (/sending client info|client info sent/i.test(brut)) etape = 0.85;
+    else if (/workshop complete|mounting/i.test(brut)) etape = Math.max(etape, 0.6);
+    else etape = Math.min(etape + 0.03, 0.9);
+    maj();
+  }
+
+  window.onresize = mise_en_page;
+  mise_en_page();
+</script>
+</body>
+</html>
